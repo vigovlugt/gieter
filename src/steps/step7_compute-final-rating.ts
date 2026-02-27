@@ -5,9 +5,8 @@ const GROUP_SIZE = 8;
 
 // ─── Value for money ──────────────────────────────────────────────────────────
 //
-// quality / price — where quality is the average of the other 5 components
-// (socialProof + 4 AI scores). The raw ratio is then normalised across all
-// listings so the best ratio → 9 and the worst → 2.
+// sum of the other 5 component scores / price per night total,
+// normalised across all listings: best ratio → 9, worst → 2.
 //
 // Inclusion bonus applied to price before the ratio:
 //   all-inclusive → price × 0.85 (effectively cheaper)
@@ -19,37 +18,26 @@ type ListingWithScores = GiteListing & {
   ai: AiEnrichment;
 };
 
-function qualityScore(algorithmic: AlgorithmicEnrichment, ai: AiEnrichment): number {
-  const scores = [
-    algorithmic.socialProof.score,
-    ai.outdoorChillPotential.score,
-    ai.groupComfort.score,
-    ai.locationVibe.score,
-    ai.miscellaneous.score,
-  ];
-  return scores.reduce((a, b) => a + b, 0) / scores.length;
+function qualitySum(algorithmic: AlgorithmicEnrichment, ai: AiEnrichment): number {
+  return (
+    algorithmic.socialProof.score +
+    ai.outdoorChillPotential.score +
+    ai.groupComfort.score +
+    ai.locationVibe.score +
+    ai.miscellaneous.score
+  );
 }
 
 function effectivePrice(listing: GiteListing): number {
-  const pp = listing.price.amount / GROUP_SIZE;
-  if (listing.allInclusive) return pp * 0.85;
-  if (listing.priceIncludes.length >= 2) return pp * 0.93;
-  return pp;
+  const price = listing.price.amount;
+  if (listing.allInclusive) return price * 0.85;
+  if (listing.priceIncludes.length >= 2) return price * 0.93;
+  return price;
 }
 
 function scoreValue(listing: ListingWithScores, allListings: ListingWithScores[]): RatingComponent {
-  const quality = qualityScore(listing.algorithmic, listing.ai);
+  const quality = qualitySum(listing.algorithmic, listing.ai);
   const price = effectivePrice(listing);
-  const ratio = quality / price;
-
-  const allRatios = allListings.map((l) => qualityScore(l.algorithmic, l.ai) / effectivePrice(l));
-  const min = Math.min(...allRatios);
-  const max = Math.max(...allRatios);
-
-  const score =
-    min === max
-      ? 5.5
-      : Math.round(Math.min(9, Math.max(2, 2 + ((ratio - min) / (max - min)) * 7)) * 10) / 10;
 
   const pp = (listing.price.amount / GROUP_SIZE).toFixed(2);
   const inclText = listing.allInclusive
@@ -58,9 +46,30 @@ function scoreValue(listing: ListingWithScores, allListings: ListingWithScores[]
       ? `includes ${listing.priceIncludes.slice(0, 2).join(", ").toLowerCase()} (price adjusted ×0.93)`
       : "few extras included";
 
+  // Listings with no price cannot be value-scored — return neutral
+  if (price <= 0) {
+    return {
+      score: 5,
+      reason: `Price unavailable — cannot assess value for money. Quality sum ${quality.toFixed(1)}/50.`,
+    };
+  }
+
+  const ratio = quality / price;
+
+  // Only include listings with a valid price in the normalisation
+  const pricedListings = allListings.filter((l) => effectivePrice(l) > 0);
+  const allRatios = pricedListings.map((l) => qualitySum(l.algorithmic, l.ai) / effectivePrice(l));
+  const min = Math.min(...allRatios);
+  const max = Math.max(...allRatios);
+
+  const score =
+    min === max
+      ? 5.5
+      : Math.round(Math.min(10, Math.max(1, 1 + ((ratio - min) / (max - min)) * 9)) * 10) / 10;
+
   return {
     score,
-    reason: `Quality avg ${quality.toFixed(1)}/10 at €${pp}/person/night — ${inclText}. Ratio ranked across all listings.`,
+    reason: `Quality sum ${quality.toFixed(1)}/50 at €${pp}/person/night — ${inclText}. Ratio ranked across all listings.`,
   };
 }
 
@@ -87,7 +96,7 @@ function computeFinalRating(value: RatingComponent, algorithmic: AlgorithmicEnri
 type Input = ListingWithScores[];
 type Output = (GiteListing & { distanceKm: number; enrichment: GiteEnrichment })[];
 
-export default createStep<Input, Output>("compute-final-rating", "5", (listings) => {
+export default createStep<Input, Output>("compute-final-rating", "8", (listings) => {
   return listings.map((listing) => {
     const value = scoreValue(listing, listings);
     const finalRating = computeFinalRating(value, listing.algorithmic, listing.ai);
