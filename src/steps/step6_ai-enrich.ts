@@ -43,7 +43,6 @@ function buildListingPrompt(listing: GiteListing & { distanceKm: number }): stri
   const condensed = {
     title: listing.title,
     type: listing.type,
-    quality: listing.quality,
     summary: listing.summary,
     description: listing.description,
     location: listing.location,
@@ -140,7 +139,7 @@ type ListingOutput = ListingInput & { ai: AiEnrichment };
 async function enrichListing(listing: ListingInput): Promise<ListingOutput> {
   const step = createStep<ListingInput, ListingOutput>(
     `ai-enrich-${listing.ref}`,
-    "3",
+    "4",
     async (l) => {
       process.stderr.write(`[ai-enrich] Rating "${l.title}" (${l.ref})...\n`);
       const ai = await callOpenRouter(buildListingPrompt(l));
@@ -153,13 +152,20 @@ async function enrichListing(listing: ListingInput): Promise<ListingOutput> {
 
 // ─── Step ────────────────────────────────────────────────────────────────────
 
+const BATCH_SIZE = 8;
+
 type Input = ListingInput[];
 type Output = ListingOutput[];
 
-export default createStep<Input, Output>("ai-enrich", "3", async (listings) => {
+export default createStep<Input, Output>("ai-enrich", "4", async (listings) => {
   const results: Output = [];
-  for (const listing of listings) {
-    results.push(await enrichListing(listing));
+
+  for (let i = 0; i < listings.length; i += BATCH_SIZE) {
+    const batch = listings.slice(i, i + BATCH_SIZE);
+    process.stderr.write(`[ai-enrich] Batch ${Math.floor(i / BATCH_SIZE) + 1}/${Math.ceil(listings.length / BATCH_SIZE)} (${batch.length} listings)...\n`);
+    const batchResults = await Promise.all(batch.map(enrichListing));
+    results.push(...batchResults);
   }
+
   return results;
 });

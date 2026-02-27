@@ -1,21 +1,20 @@
 import { createStep } from "../cache";
 import type { AlgorithmicEnrichment, GiteListing } from "../schema";
 
-// Minimum average algorithmic score (out of 10) required to proceed to AI enrichment.
+// Minimum socialProof score (out of 10) required to proceed to AI enrichment.
 // Saves API credits by skipping duds that are already poor on objective criteria.
-const MIN_ALGORITHMIC_SCORE = 5.0;
+const MIN_ALGORITHMIC_SCORE = 7.0;
 
 type Input = (GiteListing & { distanceKm: number; algorithmic: AlgorithmicEnrichment })[];
 type Output = Input;
 
-export default createStep<Input, Output>("filter-algorithmic", "1", (listings) => {
+export default createStep<Input, Output>("filter-algorithmic", "3", (listings) => {
   const filtered = listings.filter((listing) => {
-    const { value, socialProof, practicalAmenities } = listing.algorithmic;
-    const avg = (value.score + socialProof.score + practicalAmenities.score) / 3;
+    const avg = listing.algorithmic.socialProof.score;
 
     if (avg < MIN_ALGORITHMIC_SCORE) {
       process.stderr.write(
-        `[filter-algorithmic] Dropping "${listing.title}" (${listing.ref}) — algorithmic avg ${avg.toFixed(1)} < ${MIN_ALGORITHMIC_SCORE}\n`
+        `[filter-algorithmic] Dropping "${listing.title}" (${listing.ref}) — socialProof ${avg.toFixed(1)} < ${MIN_ALGORITHMIC_SCORE}\n`
       );
       return false;
     }

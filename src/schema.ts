@@ -105,12 +105,8 @@ export interface RatingComponent {
  * No LLM involved — fully reproducible.
  */
 export interface AlgorithmicEnrichment {
-  /** Price per person per night, normalized + adjusted for what's included and épis quality */
-  value: RatingComponent;
   /** Aggregate rating value weighted by review count + per-criterion averages */
   socialProof: RatingComponent;
-  /** Checklist of practical amenities: WiFi, washing machine, dishwasher, parking, m² per person */
-  practicalAmenities: RatingComponent;
 }
 
 /**
@@ -135,12 +131,14 @@ export interface AiEnrichment {
 
 /**
  * Full enrichment output: both algorithmic and AI components plus the final
- * weighted-average rating (all 7 components weighted equally at 1/7 each).
+ * weighted-average rating (all 6 components weighted equally at 1/6 each).
  */
 export interface GiteEnrichment {
   algorithmic: AlgorithmicEnrichment;
   ai: AiEnrichment;
-  /** Final rating 1–10: equal-weighted average of all 7 component scores */
+  /** Value for money: quality (avg of other 5 components) / price, normalised 2–9 */
+  value: RatingComponent;
+  /** Final rating 1–10: equal-weighted average of all 6 component scores */
   finalRating: number;
 }
 

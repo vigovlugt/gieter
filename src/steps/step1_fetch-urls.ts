@@ -42,7 +42,7 @@ function extractListingUrls(html: string): string[] {
   return urls;
 }
 
-export default createStep<void, string[]>("fetch-urls", "2", async () => {
+export default createStep<void, string[]>("fetch-urls", "3", async () => {
   const seen = new Set<string>();
   const allUrls: string[] = [];
 
@@ -59,7 +59,6 @@ export default createStep<void, string[]>("fetch-urls", "2", async () => {
         allUrls.push(url);
       }
     }
-    if (page === 2) break;
   }
 
   process.stderr.write(`\nFound ${allUrls.length} unique listings.\n`);
