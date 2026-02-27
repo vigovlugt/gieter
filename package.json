@@ -1,0 +1,17 @@
+{
+  "name": "gieter",
+  "private": true,
+  "scripts": {
+    "start": "bun src/main.ts"
+  },
+  "devDependencies": {
+    "@types/bun": "latest"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  },
+  "dependencies": {
+    "happy-dom": "15.0.0",
+    "openai": "^6.25.0"
+  }
+}
