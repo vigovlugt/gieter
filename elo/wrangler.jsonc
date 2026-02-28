@@ -1,0 +1,23 @@
+{
+  // Cloudflare Workers config for gieter-elo
+  // Setup:
+  //   1. cd elo && bun install
+  //   2. bunx wrangler d1 create gieter-elo   (then copy database_id below)
+  //   3. bunx wrangler d1 execute gieter-elo --local --file=schema.sql
+  //   4. bunx wrangler dev
+  //   5. bunx wrangler deploy
+  //   6. bunx wrangler d1 execute gieter-elo --remote --file=schema.sql  (seed remote)
+  "name": "gieter-elo",
+  "main": "src/worker.ts",
+  "compatibility_date": "2025-01-01",
+  "assets": {
+    "directory": "./public"
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "gieter-elo",
+      "database_id": "ba29fa79-df8a-4bbe-b4d2-04a81424350b"
+    }
+  ]
+}

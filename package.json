@@ -2,7 +2,8 @@
   "name": "gieter",
   "private": true,
   "scripts": {
-    "start": "bun src/main.ts"
+    "start": "bun src/main.ts",
+    "generate-elo-schema": "bun scripts/generate-elo-schema.ts"
   },
   "devDependencies": {
     "@types/bun": "latest"

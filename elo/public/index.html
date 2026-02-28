@@ -1,0 +1,844 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gieter — ELO Ranking</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0a0a0a;
+      --surface: #141414;
+      --surface2: #0f0f0f;
+      --border: #222222;
+      --text: #ededed;
+      --muted: #888888;
+      --dim: #555555;
+      --accent: #ffffff;
+      --accent-dark: #1a1a1a;
+      --green: #22c55e;
+      --amber: #f59e0b;
+      --red: #ef4444;
+    }
+
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+      min-height: 100vh;
+    }
+
+    /* Header */
+    header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 1rem 1.5rem;
+      position: sticky;
+      top: 0;
+      z-index: 200;
+      display: flex;
+      align-items: center;
+      gap: 1.5rem;
+      flex-wrap: wrap;
+    }
+    header h1 { font-size: 1.2rem; font-weight: 700; color: #f8fafc; white-space: nowrap; }
+    .header-meta { font-size: 0.8rem; color: var(--muted); }
+    .tabs { display: flex; gap: 0; margin-left: auto; }
+    .tab-btn {
+      background: none; border: 1px solid var(--border); color: var(--muted);
+      padding: 0.4rem 1.1rem; cursor: pointer; font-size: 0.85rem; font-weight: 600;
+      transition: background 0.15s, color 0.15s;
+    }
+    .tab-btn:first-child { border-radius: 6px 0 0 6px; }
+    .tab-btn:last-child  { border-radius: 0 6px 6px 0; }
+    .tab-btn + .tab-btn  { border-left: none; }
+    .tab-btn.active { background: #ffffff; color: #0a0a0a; border-color: #ffffff; }
+    .tab-btn:hover:not(.active) { background: var(--surface2); color: var(--text); }
+
+    /* Views */
+    .view { display: none; }
+    .view.active { display: block; }
+
+    /* Name gate */
+    #name-gate {
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      min-height: 60vh; gap: 1.2rem; text-align: center; padding: 2rem;
+    }
+    #name-gate h2 { font-size: 1.5rem; color: #f8fafc; }
+    #name-gate p  { color: var(--muted); font-size: 0.9rem; }
+    #name-input-wrap { display: flex; gap: 0.6rem; }
+    #name-input {
+      background: var(--surface); border: 1px solid var(--border); color: var(--text);
+      padding: 0.6rem 1rem; border-radius: 8px; font-size: 1rem; width: 220px;
+    }
+    #name-input:focus { outline: 1px solid #444444; border-color: transparent; }
+    #name-confirm {
+      background: #ffffff; color: #0a0a0a; border: none;
+      padding: 0.6rem 1.2rem; border-radius: 8px; font-size: 0.95rem; font-weight: 600; cursor: pointer;
+    }
+    #name-confirm:hover { background: #2a2a2a; }
+
+    /* Vote view */
+    #vote-header { text-align: center; padding: 1.25rem 1rem 1rem; }
+    #vote-header h2 { font-size: 1rem; color: var(--muted); margin-bottom: 0.25rem; }
+    #voter-label { font-size: 0.82rem; color: var(--dim); }
+    #voter-label span { color: var(--text); font-weight: 600; }
+    #voter-label a { color: var(--dim); font-size: 0.78rem; margin-left: 0.5rem; cursor: pointer; text-decoration: underline; }
+
+    .spinner {
+      display: inline-block; width: 22px; height: 22px;
+      border: 2px solid var(--border); border-top-color: var(--text);
+      border-radius: 50%; animation: spin 0.7s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    #vote-loading { text-align: center; padding: 6rem; color: var(--muted); display: none; }
+    #vote-error { text-align: center; padding: 2rem; color: var(--red); display: none; }
+
+    /* Matchup layout */
+    .matchup-outer { padding: 0 0.75rem 1.5rem; }
+    .matchup { display: grid; grid-template-columns: 1fr 44px 1fr; align-items: start; }
+    .vs-col {
+      display: flex; flex-direction: column; align-items: center;
+      justify-content: flex-start; padding-top: 2.5rem; gap: 1rem;
+    }
+    .vs-divider { font-size: 1.2rem; font-weight: 800; color: var(--dim); }
+    .skip-btn {
+      background: none; border: none; color: var(--dim); font-size: 0.7rem;
+      cursor: pointer; text-decoration: underline; white-space: nowrap;
+      writing-mode: vertical-rl; transform: rotate(180deg);
+    }
+    .skip-btn:hover { color: var(--muted); }
+
+    /* Listing card */
+    .listing-card {
+      background: var(--surface); border: 2px solid var(--border); border-radius: 12px;
+      overflow: hidden; cursor: pointer; transition: border-color 0.2s, box-shadow 0.2s; position: relative;
+    }
+    .listing-card:hover { border-color: #444444; box-shadow: 0 6px 28px rgba(255,255,255,0.04); }
+    .listing-card.winner { border-color: var(--green); animation: pulse-green 0.4s ease; }
+    .listing-card.loser  { border-color: var(--red); opacity: 0.5; }
+    .listing-card.voted  { pointer-events: none; }
+    @keyframes pulse-green {
+      0%   { box-shadow: 0 0 0 0 rgba(34,197,94,0.5); }
+      70%  { box-shadow: 0 0 0 14px rgba(34,197,94,0); }
+      100% { box-shadow: 0 0 0 0 rgba(34,197,94,0); }
+    }
+
+    /* Card header */
+    .card-header {
+      display: flex; align-items: flex-start; gap: 0.75rem;
+      padding: 1rem 1.25rem; background: var(--surface2); border-bottom: 1px solid var(--border);
+    }
+    .card-title-block { flex: 1; min-width: 0; }
+    .card-title { font-size: 1.05rem; font-weight: 700; color: #f8fafc; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .card-meta {
+      display: flex; flex-wrap: wrap; gap: 0.25rem 0.4rem;
+      font-size: 0.75rem; color: var(--muted); margin-top: 0.2rem; align-items: center;
+    }
+    .dot { color: var(--dim); }
+    .stars { color: #fbbf24; }
+    .epis { color: #fbbf24; font-size: 0.75rem; }
+    .no-rating { color: var(--dim); font-style: italic; }
+
+    .badge-row { display: flex; gap: 0.35rem; flex-wrap: wrap; margin-top: 0.4rem; }
+    .badge { font-size: 0.68rem; font-weight: 600; padding: 2px 7px; border-radius: 999px; }
+    .badge-pool        { background: #1a1a1a; color: #aaaaaa; border: 1px solid #333333; }
+    .badge-heated-pool { background: #7c2d12; color: #fdba74; border: 1px solid #c2410c; }
+    .badge-bbq         { background: #3b1d0a; color: #fb923c; border: 1px solid #92400e; }
+    .badge-all-inc     { background: #166534; color: #86efac; border: 1px solid #15803d; }
+
+    .rating-block { text-align: center; min-width: 60px; flex-shrink: 0; }
+    .rating-value { font-size: 1.8rem; font-weight: 800; color: #f8fafc; line-height: 1; }
+    .rating-label { font-size: 0.65rem; color: var(--dim); }
+    .score-bar-wrap { background: var(--border); border-radius: 4px; height: 5px; overflow: hidden; margin-top: 4px; }
+    .score-bar { height: 100%; border-radius: 4px; }
+
+
+    /* Card gallery */
+    .card-gallery { background: #0a0a0a; padding: 0.75rem; display: flex; flex-direction: column; gap: 6px; }
+    .main-photo { width: 100%; height: 440px; object-fit: cover; border-radius: 6px; display: block; cursor: zoom-in; }
+    .thumbs { display: flex; gap: 4px; flex-wrap: wrap; }
+    .thumb {
+      width: 54px; height: 40px; object-fit: cover; border-radius: 4px; cursor: pointer;
+      opacity: 0.55; transition: opacity 0.15s; border: 2px solid transparent; flex-shrink: 0;
+    }
+    .thumb:hover, .thumb.active { opacity: 1; border-color: #ffffff; }
+    .card-map { width: 100%; height: 160px; border-radius: 6px; overflow: hidden; z-index: 0; margin-top: 4px; }
+    .gmaps-link {
+      display: block; text-align: center; font-size: 0.72rem; color: var(--dim);
+      text-decoration: none; padding: 3px 0;
+    }
+    .gmaps-link:hover { color: var(--text); }
+
+    /* Card details */
+    .card-details { padding: 1rem 1.25rem; display: flex; flex-direction: column; gap: 0.9rem; }
+
+    .price-block { display: flex; align-items: baseline; gap: 0.4rem; flex-wrap: wrap; }
+    .price-amount { font-size: 1.5rem; font-weight: 700; color: #f8fafc; }
+    .price-unit { color: var(--muted); font-size: 0.85rem; }
+    .price-per-person { font-size: 0.75rem; color: var(--dim); margin-left: 0.25rem; }
+    .summary-text { font-size: 0.82rem; color: #cbd5e1; font-style: italic; }
+
+    /* Collapsible sections */
+    .section { border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+    .section-toggle {
+      width: 100%; background: var(--surface2); border: none; color: var(--muted);
+      padding: 0.5rem 0.9rem; text-align: left; font-size: 0.8rem; font-weight: 600;
+      cursor: pointer; display: flex; align-items: center; gap: 0.4rem;
+    }
+    .section-toggle:hover { color: var(--text); }
+    .section-toggle .chevron { font-size: 0.65rem; transition: transform 0.2s; }
+    .section-toggle.open .chevron { transform: rotate(90deg); }
+    .section-body { display: none; }
+    .section-body.open { display: block; }
+
+    /* Score breakdown */
+    .score-groups { display: flex; gap: 0.75rem; padding: 0.75rem; flex-wrap: wrap; }
+    .score-group { flex: 1; min-width: 180px; }
+    .score-group-label {
+      font-size: 0.68rem; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.07em; color: var(--dim); margin-bottom: 0.5rem;
+    }
+    .score-row { margin-bottom: 0.7rem; }
+    .score-row-top { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 2px; }
+    .score-row-name { font-size: 0.75rem; font-weight: 600; color: #cbd5e1; }
+    .score-row-val  { font-size: 0.8rem; font-weight: 700; }
+    .score-row-reason { font-size: 0.7rem; color: var(--dim); margin-top: 2px; }
+
+    /* Amenities */
+    .amenities { display: flex; gap: 0.75rem; padding: 0.75rem; flex-wrap: wrap; font-size: 0.75rem; }
+    .amenity-col { flex: 1; min-width: 120px; }
+    .amenity-col strong {
+      display: block; color: var(--muted); font-size: 0.68rem;
+      text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.3rem;
+    }
+    .amenity-col ul { list-style: none; }
+    .amenity-col li { color: #cbd5e1; padding: 1px 0; }
+    .amenity-col li::before { content: "· "; color: var(--dim); }
+
+    /* Reviews */
+    .review-item { padding: 0.75rem; border-top: 1px solid var(--border); }
+    .review-header { display: flex; gap: 0.4rem; align-items: center; flex-wrap: wrap; font-size: 0.78rem; margin-bottom: 0.25rem; }
+    .review-stars { color: #fbbf24; font-size: 0.75rem; }
+    .review-date  { color: var(--dim); font-size: 0.7rem; }
+    .review-title { font-size: 0.78rem; color: var(--muted); font-style: italic; margin-bottom: 0.2rem; }
+    .review-body  { font-size: 0.75rem; color: #cbd5e1; }
+    .owner-reply  { margin-top: 0.4rem; font-size: 0.73rem; color: #aaaaaa; padding-left: 0.75rem; border-left: 2px solid #333333; }
+
+    .view-listing {
+      display: inline-block; padding: 0.45rem 1rem; background: #ffffff; color: #0a0a0a;
+      border-radius: 7px; text-decoration: none; font-size: 0.8rem; font-weight: 600;
+      align-self: flex-start; transition: background 0.2s;
+    }
+    .view-listing:hover { background: #2a2a2a; }
+
+    /* Leaderboard */
+    #view-leaderboard { max-width: 1100px; margin: 0 auto; padding: 2rem 1rem; }
+    #leaderboard-header {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;
+    }
+    #leaderboard-header h2 { font-size: 1.2rem; font-weight: 700; }
+    .lb-meta { font-size: 0.85rem; color: var(--muted); }
+    .lb-table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+    thead th {
+      background: var(--surface2); color: var(--muted); font-size: 0.72rem; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.06em; padding: 0.6rem 0.75rem;
+      text-align: left; border-bottom: 1px solid var(--border); white-space: nowrap;
+    }
+    tbody tr { border-bottom: 1px solid var(--border); transition: background 0.1s; }
+    tbody tr:hover { background: var(--surface2); }
+    tbody td { padding: 0.65rem 0.75rem; vertical-align: middle; }
+    .lb-rank { font-size: 1.05rem; font-weight: 800; color: var(--dim); min-width: 2.2rem; }
+    .lb-rank.top1 { color: #fbbf24; }
+    .lb-rank.top2 { color: #aaaaaa; }
+    .lb-rank.top3 { color: #b45309; }
+    .lb-thumb { width: 60px; height: 44px; object-fit: cover; border-radius: 6px; display: block; }
+    .lb-title a { color: #f8fafc; text-decoration: none; font-weight: 600; }
+    .lb-title a:hover { color: var(--text); }
+    .lb-sub { font-size: 0.75rem; color: var(--muted); margin-top: 1px; }
+    .elo-val { font-size: 1.05rem; font-weight: 700; color: #f8fafc; }
+    .elo-ci  { font-size: 0.72rem; font-weight: 400; color: var(--dim); }
+    .elo-delta { font-size: 0.72rem; color: var(--dim); }
+    .wl { color: var(--muted); font-size: 0.8rem; white-space: nowrap; }
+    .wl .w { color: var(--green); font-weight: 600; }
+    .wl .l { color: var(--red); font-weight: 600; }
+
+    /* Votes history */
+    #votes-section { margin-top: 3rem; }
+    #votes-section h3 {
+      font-size: 1rem; font-weight: 700; margin-bottom: 1rem;
+      color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em;
+    }
+    .voter-filter-wrap { margin-bottom: 1rem; display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap; }
+    .voter-filter-wrap label { font-size: 0.82rem; color: var(--muted); }
+    #voter-filter {
+      background: var(--surface); border: 1px solid var(--border); color: var(--text);
+      padding: 0.3rem 0.6rem; border-radius: 6px; font-size: 0.82rem;
+    }
+    #reset-btn {
+      margin-left: auto; background: none; border: 1px solid var(--red); color: var(--red);
+      padding: 0.3rem 0.85rem; border-radius: 6px; font-size: 0.8rem; font-weight: 600;
+      cursor: pointer; transition: background 0.15s;
+    }
+    #reset-btn:hover { background: rgba(239,68,68,0.1); }
+
+    /* Lightbox */
+    #lightbox {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,0.93); z-index: 1000; align-items: center; justify-content: center;
+    }
+    #lightbox.open { display: flex; }
+    #lightbox img { max-width: 82vw; max-height: 90vh; object-fit: contain; border-radius: 6px; }
+    #lightbox-close {
+      position: fixed; top: 1rem; right: 1.5rem; font-size: 2.2rem;
+      color: #e2e8f0; cursor: pointer; line-height: 1; user-select: none;
+    }
+    #lightbox-close:hover { color: #fff; }
+    .lb-nav {
+      position: fixed; top: 50%; transform: translateY(-50%); font-size: 2.5rem; color: #e2e8f0;
+      cursor: pointer; user-select: none; padding: 0.5rem 1rem;
+      background: rgba(0,0,0,0.4); border-radius: 6px; line-height: 1;
+    }
+    .lb-nav:hover { background: rgba(0,0,0,0.7); color: #fff; }
+    #lb-prev { left: 1rem; }
+    #lb-next { right: 1rem; }
+    #lb-counter {
+      position: fixed; bottom: 1.2rem; left: 50%; transform: translateX(-50%);
+      font-size: 0.82rem; color: #888888; background: rgba(0,0,0,0.5); padding: 3px 12px; border-radius: 999px;
+    }
+
+    @media (max-width: 700px) {
+      .matchup { grid-template-columns: 1fr; }
+      .vs-col { flex-direction: row; padding-top: 0; padding: 0.5rem 0; justify-content: center; }
+      .skip-btn { writing-mode: horizontal-tb; transform: none; }
+      .main-photo { height: 300px; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>Gieter — ELO Ranking</h1>
+  <div class="header-meta" id="header-meta">Loading…</div>
+  <nav class="tabs">
+    <button class="tab-btn active" onclick="switchTab('vote', this)">Vote</button>
+    <button class="tab-btn" onclick="switchTab('leaderboard', this)">Leaderboard</button>
+  </nav>
+</header>
+
+<div id="view-vote" class="view active">
+  <div id="name-gate">
+    <h2>Who are you?</h2>
+    <p>Your name will be saved with your votes so we can see who picked what.</p>
+    <div id="name-input-wrap">
+      <input id="name-input" type="text" placeholder="Your name" maxlength="64" autocomplete="off">
+      <button id="name-confirm" onclick="confirmName()">Let's go</button>
+    </div>
+  </div>
+
+  <div id="voting-ui" style="display:none">
+    <div id="vote-header">
+      <h2>Which house would you rather stay at?</h2>
+      <div id="voter-label">
+        Voting as <span id="voter-display"></span>
+        <a onclick="changeName()">(change)</a>
+      </div>
+    </div>
+    <div id="vote-loading"><div class="spinner"></div></div>
+    <div id="vote-error"></div>
+    <div id="matchup-wrap">
+      <div class="matchup-outer">
+        <div class="matchup" id="matchup">
+          <div id="card-a"></div>
+          <div class="vs-col">
+            <div class="vs-divider">VS</div>
+            <button class="skip-btn" onclick="loadMatchup()">skip pair</button>
+          </div>
+          <div id="card-b"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="view-leaderboard" class="view">
+  <div id="leaderboard-header">
+    <h2>Leaderboard</h2>
+    <div class="lb-meta" id="lb-meta"></div>
+  </div>
+  <div class="lb-table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>#</th><th></th><th>House</th><th>ELO</th>
+          <th>W / L</th><th>Matches</th><th>AI Score</th><th>Price/night</th><th>Distance</th>
+        </tr>
+      </thead>
+      <tbody id="lb-body"></tbody>
+    </table>
+  </div>
+  <div id="votes-section">
+    <h3>Votes per user</h3>
+    <div class="lb-table-wrap" style="margin-bottom:2rem">
+      <table>
+        <thead><tr><th>Voter</th><th>Votes cast</th></tr></thead>
+        <tbody id="voter-stats-body"></tbody>
+      </table>
+    </div>
+    <h3>Vote history</h3>
+    <div class="voter-filter-wrap">
+      <label for="voter-filter">Filter by voter:</label>
+      <select id="voter-filter" onchange="filterVotes()"><option value="">Everyone</option></select>
+      <button id="reset-btn" onclick="resetAll()">Reset all scores</button>
+    </div>
+    <div class="lb-table-wrap">
+      <table>
+        <thead><tr><th>Date (UTC)</th><th>Voter</th><th>Winner</th><th>Loser</th></tr></thead>
+        <tbody id="votes-body"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<div id="lightbox" onclick="lbClickOutside(event)">
+  <span id="lightbox-close" onclick="closeLb()">&times;</span>
+  <span class="lb-nav" id="lb-prev" onclick="lbNav(-1,event)">&#8249;</span>
+  <img id="lb-img" src="" alt="">
+  <span class="lb-nav" id="lb-next" onclick="lbNav(1,event)">&#8250;</span>
+  <div id="lb-counter"></div>
+</div>
+
+<script>
+let voterName = localStorage.getItem('gieter_voter') || '';
+let currentMatchup = null;
+let allVotes = [];
+let _lbPhotos = [];
+let _lbIndex = 0;
+const _maps = {};
+const _photoStore = {};   // side -> photos array
+const _activeThumb = {};  // side -> current index
+
+function switchTab(tab, btn) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('view-' + tab).classList.add('active');
+  btn.classList.add('active');
+  if (tab === 'leaderboard') loadLeaderboard();
+}
+
+function init() {
+  if (voterName) showVoting();
+  document.getElementById('name-input').addEventListener('keydown', e => {
+    if (e.key === 'Enter') confirmName();
+  });
+}
+
+function confirmName() {
+  const val = document.getElementById('name-input').value.trim();
+  if (!val) { document.getElementById('name-input').focus(); return; }
+  voterName = val;
+  localStorage.setItem('gieter_voter', voterName);
+  showVoting();
+}
+
+function changeName() {
+  voterName = '';
+  localStorage.removeItem('gieter_voter');
+  document.getElementById('voting-ui').style.display = 'none';
+  document.getElementById('name-gate').style.display = 'flex';
+  document.getElementById('name-input').value = '';
+}
+
+function showVoting() {
+  document.getElementById('name-gate').style.display = 'none';
+  document.getElementById('voting-ui').style.display = 'block';
+  document.getElementById('voter-display').textContent = voterName;
+  loadMatchup();
+  loadHeaderMeta();
+}
+
+async function loadMatchup() {
+  for (const s of ['a','b']) { if (_maps[s]) { _maps[s].remove(); delete _maps[s]; } }
+  setVoteLoading(true);
+  document.getElementById('vote-error').style.display = 'none';
+  try {
+    const res = await fetch('/api/matchup');
+    if (!res.ok) throw new Error();
+    currentMatchup = await res.json();
+    renderMatchup(currentMatchup);
+  } catch {
+    document.getElementById('vote-error').style.display = 'block';
+    document.getElementById('vote-error').textContent = 'Error loading matchup. Try refreshing.';
+  } finally {
+    setVoteLoading(false);
+  }
+}
+
+function setVoteLoading(on) {
+  document.getElementById('vote-loading').style.display = on ? 'block' : 'none';
+  document.getElementById('matchup-wrap').style.display = on ? 'none' : 'block';
+}
+
+function renderMatchup(m) {
+  _photoStore['a'] = m.a.listing.photos;
+  _photoStore['b'] = m.b.listing.photos;
+  _activeThumb['a'] = 0;
+  _activeThumb['b'] = 0;
+  document.getElementById('card-a').innerHTML = buildCard(m.a, 'a');
+  document.getElementById('card-b').innerHTML = buildCard(m.b, 'b');
+  initMap('a', m.a.listing);
+  initMap('b', m.b.listing);
+}
+
+function initMap(side, l) {
+  const el = document.getElementById('map-' + side);
+  if (!el || !l) return;
+  const lat = l.location.latitude, lon = l.location.longitude;
+  if (!lat || !lon) return;
+  const map = L.map(el, { zoomControl: true, attributionControl: false, scrollWheelZoom: false })
+    .setView([lat, lon], 13);
+  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
+  L.circleMarker([lat, lon], { radius: 7, color: '#444444', fillColor: '#888888', fillOpacity: 0.9, weight: 2 }).addTo(map);
+  _maps[side] = map;
+  setTimeout(() => map.invalidateSize(), 50);
+}
+
+function buildCard(entry, side) {
+  const l = entry.listing;
+  const ppp = (l.price.amount / l.capacity.people).toFixed(0);
+  const scoreColor = l.finalRating >= 7.5 ? '#22c55e' : l.finalRating >= 5.5 ? '#f59e0b' : '#ef4444';
+  const scorePct = (((l.finalRating - 1) / 9) * 100).toFixed(1);
+  const starsFilled = Math.round(l.aggregateRating.value);
+
+  return `
+  <article class="listing-card" id="lcard-${side}" onclick="vote('${side}')">
+    <div class="card-header">
+      <div class="card-title-block">
+        <div class="card-title" title="${esc(l.title)}">${esc(l.title)}</div>
+        <div class="card-meta">
+          <span>${esc(l.location.city)}, ${esc(l.location.department)}, ${esc(l.location.region)}</span>
+          <span class="dot">·</span>
+          <span>${l.distanceKm} km from Amsterdam</span>
+          <span class="dot">·</span>
+          <span class="epis">${'◆'.repeat(l.quality)}${'◇'.repeat(Math.max(0,5-l.quality))} ${l.quality} épis</span>
+        </div>
+        <div class="card-meta">
+          ${l.aggregateRating.count > 0
+            ? `<span class="stars">${'★'.repeat(starsFilled)}${'☆'.repeat(5-starsFilled)}</span>
+               <span>${l.aggregateRating.value.toFixed(1)} (${l.aggregateRating.count} reviews)</span>`
+            : `<span class="no-rating">No reviews</span>`}
+          <span class="dot">·</span>
+          <span>${l.capacity.people} people · ${l.capacity.bedrooms} bedrooms${l.capacity.surfaceM2 ? ` · ${l.capacity.surfaceM2} m²` : ''}</span>
+        </div>
+        <div class="badge-row">${buildBadges(l)}</div>
+      </div>
+      <div class="rating-block">
+        <div class="rating-value">${l.finalRating.toFixed(2)}</div>
+        <div class="rating-label">/ 10</div>
+        <div class="score-bar-wrap"><div class="score-bar" style="width:${scorePct}%;background:${scoreColor}"></div></div>
+      </div>
+    </div>
+    <div class="card-body">
+      <div class="card-gallery">
+        ${l.photos.length > 0
+          ? `<img class="main-photo" id="main-${side}" src="${esc(l.photos[0])}" alt="photo"
+               onclick="openLbSide(event,'${side}')">`
+          : ''}
+        ${l.photos.length > 1
+          ? `<div class="thumbs">${l.photos.map((p,i) =>
+              `<img class="thumb${i===0?' active':''}" src="${esc(p)}" loading="lazy"
+                 onclick="selectThumb(event,'${side}',${i})">`
+            ).join('')}</div>`
+          : ''}
+        <div class="card-map" id="map-${side}"></div>
+        <a class="gmaps-link" href="https://www.google.com/maps?q=${l.location.latitude},${l.location.longitude}"
+           target="_blank" rel="noopener" onclick="event.stopPropagation()">Open in Google Maps →</a>
+      </div>
+      <div class="card-details">
+        <div class="price-block">
+          <span class="price-amount">€${l.price.amount}</span>
+          <span class="price-unit">/ night</span>
+          <span class="price-per-person">≈ €${ppp} / person / night</span>
+          ${l.allInclusive ? '<span class="badge badge-all-inc">All Inclusive</span>' : ''}
+        </div>
+        ${l.summary ? `<p class="summary-text">${esc(l.summary)}</p>` : ''}
+        <div class="section">
+          <button class="section-toggle open" onclick="toggleSection(event,this)">
+            <span class="chevron">▶</span> Score breakdown
+          </button>
+          <div class="section-body open">
+            <div class="score-groups">
+              <div class="score-group">
+                <div class="score-group-label">Algorithmic</div>
+                ${scoreRow('Value for money', l.enrichment.value)}
+                ${scoreRow('Social proof', l.enrichment.algorithmic.socialProof)}
+              </div>
+              <div class="score-group">
+                <div class="score-group-label">AI assessment</div>
+                ${scoreRow('Outdoor chill', l.enrichment.ai.outdoorChillPotential)}
+                ${scoreRow('Group comfort', l.enrichment.ai.groupComfort)}
+                ${scoreRow('Location vibe', l.enrichment.ai.locationVibe)}
+                ${scoreRow('Miscellaneous', l.enrichment.ai.miscellaneous)}
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="section">
+          <button class="section-toggle" onclick="toggleSection(event,this)">
+            <span class="chevron">▶</span> Amenities
+          </button>
+          <div class="section-body">
+            <div class="amenities">
+              <div class="amenity-col">
+                <strong>Indoor</strong>
+                <ul>${(l.equipment.indoor||[]).map(a=>`<li>${esc(a)}</li>`).join('')}</ul>
+              </div>
+              <div class="amenity-col">
+                <strong>Outdoor</strong>
+                <ul>${(l.equipment.outdoor||[]).map(a=>`<li>${esc(a)}</li>`).join('')}</ul>
+              </div>
+              <div class="amenity-col">
+                <strong>Services</strong>
+                <ul>${(l.equipment.services||[]).map(a=>`<li>${esc(a)}</li>`).join('')}</ul>
+              </div>
+            </div>
+          </div>
+        </div>
+        ${l.reviews && l.reviews.length > 0 ? `
+        <div class="section">
+          <button class="section-toggle" onclick="toggleSection(event,this)">
+            <span class="chevron">▶</span> Reviews (${l.reviews.length} shown)
+          </button>
+          <div class="section-body">
+            ${l.reviews.map(r => `
+            <div class="review-item">
+              <div class="review-header">
+                <strong>${esc(r.author)}</strong>
+                <span class="review-stars">${'★'.repeat(Math.round(r.rating))}${'☆'.repeat(5-Math.round(r.rating))}</span>
+                <span class="review-date">${esc(r.stayFrom)} – ${esc(r.stayTo)}</span>
+              </div>
+              <p class="review-title">${esc(r.title)}</p>
+              <p class="review-body">${esc(r.body)}</p>
+              ${r.ownerReply ? `<div class="owner-reply"><strong>${esc(r.ownerReply.author)}:</strong> ${esc(r.ownerReply.text)}</div>` : ''}
+            </div>`).join('')}
+          </div>
+        </div>` : ''}
+        <a class="view-listing" href="${esc(l.url)}" target="_blank" rel="noopener"
+           onclick="event.stopPropagation()">View on Gîtes de France →</a>
+      </div>
+    </div>
+  </article>`;
+}
+
+function scoreRow(label, c) {
+  const color = c.score >= 7.5 ? '#22c55e' : c.score >= 5.5 ? '#f59e0b' : '#ef4444';
+  const pct = (((c.score - 1) / 9) * 100).toFixed(1);
+  return `<div class="score-row">
+    <div class="score-row-top">
+      <span class="score-row-name">${label}</span>
+      <span class="score-row-val" style="color:${color}">${c.score.toFixed(1)}</span>
+    </div>
+    <div class="score-bar-wrap"><div class="score-bar" style="width:${pct}%;background:${color}"></div></div>
+    <div class="score-row-reason">${esc(c.reason)}</div>
+  </div>`;
+}
+
+function buildBadges(l) {
+  const lower = (l.equipment ? l.equipment.outdoor : l.outdoor || []).map(a => a.toLowerCase());
+  let out = '';
+  if (lower.some(a => a.includes('heated') && a.includes('pool')))
+    out += '<span class="badge badge-heated-pool">♨ Heated Pool</span>';
+  else if (lower.some(a => a.includes('covered') && a.includes('pool')))
+    out += '<span class="badge badge-pool">Covered Pool</span>';
+  else if (lower.some(a => a.includes('private') && a.includes('pool')))
+    out += '<span class="badge badge-pool">Private Pool</span>';
+  else if (lower.some(a => a.includes('pool')))
+    out += '<span class="badge badge-pool">Pool</span>';
+  if (lower.some(a => a.includes('barbecue') || a.includes('bbq')))
+    out += '<span class="badge badge-bbq">BBQ</span>';
+  if (l.allInclusive)
+    out += '<span class="badge badge-all-inc">All Inclusive</span>';
+  return out;
+}
+
+function selectThumb(e, side, idx) {
+  e.stopPropagation();
+  _activeThumb[side] = idx;
+  const photos = _photoStore[side];
+  document.getElementById('main-' + side).src = photos[idx];
+  document.getElementById('lcard-' + side).querySelectorAll('.thumb')
+    .forEach((t, i) => t.classList.toggle('active', i === idx));
+}
+
+function openLbSide(e, side) {
+  e.stopPropagation();
+  openLb(_photoStore[side], _activeThumb[side] || 0);
+}
+
+function openLb(photos, idx) {
+  _lbPhotos = photos; _lbIndex = idx;
+  renderLb();
+  document.getElementById('lightbox').classList.add('open');
+}
+
+function renderLb() {
+  document.getElementById('lb-img').src = _lbPhotos[_lbIndex];
+  document.getElementById('lb-counter').textContent = (_lbIndex+1) + ' / ' + _lbPhotos.length;
+  const show = _lbPhotos.length > 1;
+  document.getElementById('lb-prev').style.display = show ? '' : 'none';
+  document.getElementById('lb-next').style.display = show ? '' : 'none';
+}
+
+function lbNav(dir, e) {
+  e.stopPropagation();
+  _lbIndex = (_lbIndex + dir + _lbPhotos.length) % _lbPhotos.length;
+  renderLb();
+}
+function lbClickOutside(e) { if (e.target === document.getElementById('lightbox')) closeLb(); }
+function closeLb() { document.getElementById('lightbox').classList.remove('open'); }
+
+document.addEventListener('keydown', e => {
+  if (!document.getElementById('lightbox').classList.contains('open')) return;
+  if (e.key === 'Escape') closeLb();
+  if (e.key === 'ArrowLeft')  { _lbIndex = (_lbIndex-1+_lbPhotos.length)%_lbPhotos.length; renderLb(); }
+  if (e.key === 'ArrowRight') { _lbIndex = (_lbIndex+1)%_lbPhotos.length; renderLb(); }
+});
+
+function toggleSection(e, btn) {
+  e.stopPropagation();
+  btn.classList.toggle('open');
+  btn.nextElementSibling.classList.toggle('open');
+}
+
+async function vote(winningSide) {
+  if (!currentMatchup) return;
+  const winner = winningSide === 'a' ? currentMatchup.a : currentMatchup.b;
+  const loser  = winningSide === 'a' ? currentMatchup.b : currentMatchup.a;
+  const winCard  = document.getElementById('lcard-' + winningSide);
+  const loseCard = document.getElementById('lcard-' + (winningSide === 'a' ? 'b' : 'a'));
+  winCard.classList.add('winner', 'voted');
+  loseCard.classList.add('loser', 'voted');
+  try {
+    const res = await fetch('/api/vote', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ winner: winner.ref, loser: loser.ref, voter: voterName }),
+    });
+    if (res.ok) {
+      const data = await res.json();
+      updateHeaderVoteCount(data.totalVotes);
+    }
+  } catch {}
+  setTimeout(loadMatchup, 700);
+}
+
+function updateHeaderVoteCount(total) {
+  document.getElementById('header-meta').textContent = `${total} votes cast · Top 50 houses`;
+}
+
+async function loadHeaderMeta() {
+  try {
+    const res = await fetch('/api/leaderboard');
+    if (!res.ok) return;
+    const data = await res.json();
+    updateHeaderVoteCount(data.totalVotes);
+  } catch {}
+}
+
+async function loadLeaderboard() {
+  const [lbRes, votesRes] = await Promise.all([fetch('/api/leaderboard'), fetch('/api/votes')]);
+  const lbData = await lbRes.json();
+  allVotes = (await votesRes.json()).votes || [];
+  updateHeaderVoteCount(lbData.totalVotes);
+  renderLeaderboard(lbData);
+  renderVoterStats(allVotes);
+  renderVotes(allVotes);
+  populateVoterFilter(allVotes);
+}
+
+function renderLeaderboard(data) {
+  document.getElementById('lb-meta').textContent = `${data.totalVotes} total votes`;
+  const tbody = document.getElementById('lb-body');
+  tbody.innerHTML = data.leaderboard.map(entry => {
+    const l = entry.listing;
+    const rankClass = entry.rank === 1 ? 'top1' : entry.rank === 2 ? 'top2' : entry.rank === 3 ? 'top3' : '';
+    const scoreColor = l.finalRating >= 7.5 ? '#22c55e' : l.finalRating >= 5.5 ? '#f59e0b' : '#ef4444';
+    return `<tr>
+      <td><span class="lb-rank ${rankClass}">#${entry.rank}</span></td>
+      <td><img class="lb-thumb" src="${esc(l.photos[0]||'')}" alt="" loading="lazy" onerror="this.style.display='none'"></td>
+      <td class="lb-title">
+        <a href="${esc(l.url)}" target="_blank" rel="noopener">${esc(l.title)}</a>
+        <div class="lb-sub">${esc(l.location.city)}, ${esc(l.location.department)}</div>
+        <div style="margin-top:3px">${buildBadges(l)}</div>
+      </td>
+      <td><div class="elo-val">${Math.round(entry.elo)} <span class="elo-ci">±${Math.round(400/Math.sqrt(entry.matches+1))}</span></div></td>
+      <td class="wl"><span class="w">${entry.wins}W</span> / <span class="l">${entry.losses}L</span></td>
+      <td style="color:var(--muted)">${entry.matches}</td>
+      <td><span style="font-weight:600;color:${scoreColor}">${l.finalRating.toFixed(1)}</span></td>
+      <td style="color:var(--muted)">€${l.price.amount}</td>
+      <td style="color:var(--muted)">${l.distanceKm} km</td>
+    </tr>`;
+  }).join('');
+}
+
+function renderVoterStats(votes) {
+  const counts = {};
+  for (const v of votes) counts[v.voter_name] = (counts[v.voter_name] || 0) + 1;
+  const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]);
+  const tbody = document.getElementById('voter-stats-body');
+  if (sorted.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="2" style="color:var(--dim);text-align:center;padding:1rem">No votes yet.</td></tr>';
+    return;
+  }
+  tbody.innerHTML = sorted.map(([name, count]) => `<tr>
+    <td style="font-weight:600;color:var(--accent)">${esc(name)}</td>
+    <td style="color:var(--muted)">${count}</td>
+  </tr>`).join('');
+}
+
+function renderVotes(votes, filterVoter = '') {
+  const filtered = filterVoter ? votes.filter(v => v.voter_name === filterVoter) : votes;
+  const tbody = document.getElementById('votes-body');
+  if (filtered.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="4" style="color:var(--dim);text-align:center;padding:1rem">No votes yet.</td></tr>';
+    return;
+  }
+  tbody.innerHTML = filtered.map(v => `<tr>
+    <td style="color:var(--dim);white-space:nowrap">${esc(v.created_at)}</td>
+    <td style="font-weight:600;color:var(--accent)">${esc(v.voter_name)}</td>
+    <td style="color:#86efac">${esc(v.winner_title)}</td>
+    <td style="color:var(--muted)">${esc(v.loser_title)}</td>
+  </tr>`).join('');
+}
+
+function populateVoterFilter(votes) {
+  const names = [...new Set(votes.map(v => v.voter_name))].sort();
+  const sel = document.getElementById('voter-filter');
+  sel.innerHTML = '<option value="">Everyone</option>' +
+    names.map(n => `<option value="${esc(n)}">${esc(n)}</option>`).join('');
+}
+
+function filterVotes() { renderVotes(allVotes, document.getElementById('voter-filter').value); }
+
+async function resetAll() {
+  if (!confirm('Reset ALL votes and ELO scores? This cannot be undone.')) return;
+  if (!confirm('Are you sure? All vote history will be deleted.')) return;
+  await fetch('/api/reset', { method: 'POST' });
+  loadLeaderboard();
+}
+
+function esc(str) {
+  if (str == null) return '';
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+init();
+</script>
+</body>
+</html>

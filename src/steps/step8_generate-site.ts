@@ -34,6 +34,34 @@ function epiDots(quality: number): string {
   return "◆".repeat(quality) + "◇".repeat(Math.max(0, 5 - quality));
 }
 
+function amenityBadges(outdoor: string[]): string {
+  const lower = outdoor.map((a) => a.toLowerCase());
+  const badges: string[] = [];
+
+  const hasHeatedPool = lower.some((a) => a.includes("heated") && a.includes("pool"));
+  const hasCoveredPool = lower.some((a) => a.includes("covered") && a.includes("pool"));
+  const hasPrivatePool = lower.some((a) => a.includes("private") && a.includes("pool"));
+  const hasPool = lower.some((a) => a.includes("pool"));
+
+  if (hasHeatedPool) {
+    badges.push('<span class="amenity-badge badge-heated-pool">♨ Heated Pool</span>');
+  } else if (hasCoveredPool) {
+    badges.push('<span class="amenity-badge badge-pool">〰 Covered Pool</span>');
+  } else if (hasPrivatePool) {
+    badges.push('<span class="amenity-badge badge-pool">🏊 Private Pool</span>');
+  } else if (hasPool) {
+    badges.push('<span class="amenity-badge badge-pool">🏊 Pool</span>');
+  }
+
+  const hasBbq = lower.some((a) => a.includes("barbecue") || a.includes("bbq"));
+  if (hasBbq) {
+    badges.push('<span class="amenity-badge badge-bbq">🔥 BBQ</span>');
+  }
+
+  if (badges.length === 0) return "";
+  return `<div class="amenity-badges">${badges.join("")}</div>`;
+}
+
 function starDisplay(value: number, count: number): string {
   if (count === 0) return '<span class="no-rating">No reviews</span>';
   const filled = Math.round(value);
@@ -89,6 +117,7 @@ function renderCard(listing: EnrichedListing, rank: number): string {
           <span class="dot">·</span>
           <span class="capacity">${listing.capacity.people} people · ${listing.capacity.bedrooms} bedrooms${listing.capacity.surfaceM2 ? ` · ${listing.capacity.surfaceM2} m²` : ""}</span>
         </div>
+        ${amenityBadges(listing.equipment.outdoor)}
       </div>
       <div class="final-rating-block">
         <div class="final-rating-value">${finalRating.toFixed(2)}</div>
@@ -128,14 +157,13 @@ function renderCard(listing: EnrichedListing, rank: number): string {
           </div>
         </details>
 
-        ${
-          listing.description
-            ? `<details class="description-section">
+        ${listing.description
+      ? `<details class="description-section">
           <summary>Full description</summary>
           <p class="description-text">${esc(listing.description)}</p>
         </details>`
-            : ""
-        }
+      : ""
+    }
 
         <div class="amenities">
           <div class="amenity-col">
@@ -152,14 +180,13 @@ function renderCard(listing: EnrichedListing, rank: number): string {
           </div>
         </div>
 
-        ${
-          listing.reviews.length > 0
-            ? `<details class="reviews-section">
+        ${listing.reviews.length > 0
+      ? `<details class="reviews-section">
           <summary>Reviews (${listing.reviews.length})</summary>
           ${listing.reviews
-            .slice(0, 5)
-            .map(
-              (r) => `
+        .slice(0, 5)
+        .map(
+          (r) => `
             <div class="review">
               <div class="review-header">
                 <strong>${esc(r.author)}</strong>
@@ -168,17 +195,16 @@ function renderCard(listing: EnrichedListing, rank: number): string {
               </div>
               <p class="review-title"><em>${esc(r.title)}</em></p>
               <p class="review-body">${esc(r.body)}</p>
-              ${
-                r.ownerReply
-                  ? `<div class="owner-reply"><strong>${esc(r.ownerReply.author)}:</strong> ${esc(r.ownerReply.text)}</div>`
-                  : ""
-              }
+              ${r.ownerReply
+              ? `<div class="owner-reply"><strong>${esc(r.ownerReply.author)}:</strong> ${esc(r.ownerReply.text)}</div>`
+              : ""
+            }
             </div>`
-            )
-            .join("")}
+        )
+        .join("")}
         </details>`
-            : ""
-        }
+      : ""
+    }
 
         <a class="view-listing" href="${esc(listing.url)}" target="_blank" rel="noopener">View on Gites de France &rarr;</a>
       </div>
@@ -262,6 +288,12 @@ function generateHtml(listings: EnrichedListing[]): string {
     .stars { color: #fbbf24; }
     .review-count { color: #94a3b8; }
     .no-rating { color: #475569; font-style: italic; }
+
+    .amenity-badges { display: flex; gap: 0.4rem; flex-wrap: wrap; margin-top: 0.4rem; }
+    .amenity-badge { font-size: 0.72rem; font-weight: 600; padding: 2px 8px; border-radius: 999px; }
+    .badge-pool { background: #0c4a6e; color: #7dd3fc; border: 1px solid #0369a1; }
+    .badge-heated-pool { background: #7c2d12; color: #fdba74; border: 1px solid #c2410c; }
+    .badge-bbq { background: #3b1d0a; color: #fb923c; border: 1px solid #92400e; }
 
     .final-rating-block { text-align: center; min-width: 80px; }
     .final-rating-value { font-size: 2.2rem; font-weight: 800; color: #f8fafc; line-height: 1; }
@@ -496,7 +528,7 @@ ${cards}
     document.querySelectorAll('.map[data-lat]').forEach(function(el) {
       var lat = parseFloat(el.dataset.lat);
       var lon = parseFloat(el.dataset.lon);
-      var map = L.map(el, { zoomControl: true, attributionControl: true, scrollWheelZoom: false }).setView([lat, lon], 13);
+      var map = L.map(el, { zoomControl: true, attributionControl: true, scrollWheelZoom: false }).setView([lat, lon], 14);
       L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
         maxZoom: 19

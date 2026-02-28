@@ -1,0 +1,16 @@
+{
+  "name": "gieter-elo",
+  "private": true,
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "d1:create": "wrangler d1 create gieter-elo",
+    "d1:init:local": "wrangler d1 execute gieter-elo --local --file=schema.sql",
+    "d1:init:remote": "wrangler d1 execute gieter-elo --remote --file=schema.sql"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20250109.0",
+    "typescript": "^5.7.3",
+    "wrangler": "^3.109.2"
+  }
+}

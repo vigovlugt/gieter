@@ -15,7 +15,11 @@ You will be given a listing's details and must rate FOUR components on a scale o
 The four components are:
 
 1. outdoorChillPotential (1–10)
-   Does this place excel for outdoor relaxation in summer? Look for: pool, large private garden, quality terrace, deckchairs, barbecue, countryside setting, shade, views. Penalise: small or shared outdoor space, urban location, no pool or garden.
+   Does this place excel for outdoor relaxation in summer? Look for: pool, large private garden, quality terrace, deckchairs, barbecue, countryside setting, shade, views. Penalise heavily: small or shared outdoor space, urban location. Hard caps on pool:
+   - No pool at all: score 5 maximum.
+   - Pool present but explicitly shared (with other guests/properties): score 6 maximum.
+   - Pool present and private, or pool type unspecified (assume private): no cap from this rule.
+   No garden at all scores 3 or below.
 
 2. groupComfort (1–10)
    How comfortable is the layout for 8 people sharing for a week? Look for: enough double beds (not just bunks), multiple bathrooms, a spacious communal living area, good kitchen for cooking together. Penalise: split across separate units, many bunk beds, single bathroom, cramped common space.
@@ -23,8 +27,8 @@ The four components are:
 3. locationVibe (1–10)
    Is the property's IMMEDIATE setting a proper holiday environment? You are scoring the property's surroundings, NOT the broader region or nearby attractions.
    Look for: directly in nature (forest, fields, river, sea, vineyard), private or rural setting, no neighbours visible, countryside or coastal isolation.
-   Penalise heavily: in a village centre or on a village street (even a charming one), in a town, suburban sprawl, industrial areas, commuter belt. Being "near" the sea or a forest is not enough — the property itself must feel like it is IN nature or in an isolated rural setting.
-   A property in the middle of a village scores 4–5 at most, even if the village is picturesque or close to the coast.
+    Penalise very heavily: in a village centre or on a village street (even a charming one), in a town, suburban sprawl, industrial areas, commuter belt, or anywhere neighbours are visible or audible. Being "near" the sea or a forest is not enough — the property itself must feel like it is IN nature or in an isolated rural setting.
+    A property in the middle of a village scores 3–4 at most, even if the village is picturesque or close to the coast. Any mention of neighbours nearby, shared walls, or overlooked outdoor space is an immediate heavy penalty.
 
 4. miscellaneous (1–10, default 5)
    Anything notable NOT already captured by the above three components. Use 5 if there is nothing special to report. Go above 5 for standout bonuses (e.g. private pool on top of garden, vineyard on-site, exceptional views, spa included, unique architecture). Go below 5 for red flags (e.g. owner lives on-site and may restrict noise/late nights, parties explicitly forbidden, shared facilities with other guests, unusual access issues). Read the reviews carefully for red flags that the description glosses over.
@@ -139,7 +143,7 @@ type ListingOutput = ListingInput & { ai: AiEnrichment };
 async function enrichListing(listing: ListingInput): Promise<ListingOutput> {
   const step = createStep<ListingInput, ListingOutput>(
     `ai-enrich-${listing.ref}`,
-    "4",
+    "5",
     async (l) => {
       process.stderr.write(`[ai-enrich] Rating "${l.title}" (${l.ref})...\n`);
       const ai = await callOpenRouter(buildListingPrompt(l));
@@ -152,12 +156,12 @@ async function enrichListing(listing: ListingInput): Promise<ListingOutput> {
 
 // ─── Step ────────────────────────────────────────────────────────────────────
 
-const BATCH_SIZE = 8;
+const BATCH_SIZE = 16;
 
 type Input = ListingInput[];
 type Output = ListingOutput[];
 
-export default createStep<Input, Output>("ai-enrich", "4", async (listings) => {
+export default createStep<Input, Output>("ai-enrich", "6", async (listings) => {
   const results: Output = [];
 
   for (let i = 0; i < listings.length; i += BATCH_SIZE) {
