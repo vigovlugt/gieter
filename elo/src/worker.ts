@@ -109,10 +109,10 @@ async function randomPair(db: D1Database): Promise<[ListingRow, ListingRow] | nu
   if (!results || results.length < 2) return null;
 
   const underplayed = results.filter((r) => r.matches < 2);
-  const pool = underplayed.length > 0 ? underplayed : results;
+  const pool = underplayed.length >= 2 ? underplayed : results;
 
   let weights: number[];
-  if (underplayed.length > 0) {
+  if (underplayed.length >= 2) {
     // Phase 1: equal weight within the under-played pool
     weights = pool.map(() => 1);
   } else {
