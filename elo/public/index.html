@@ -85,6 +85,12 @@
     /* Vote view */
     #vote-header { text-align: center; padding: 1.25rem 1rem 1rem; }
     #vote-header h2 { font-size: 1rem; color: var(--muted); margin-bottom: 0.25rem; }
+    .key-hint { color: var(--dim); font-size: 0.75rem; }
+    kbd {
+      display: inline-block; padding: 1px 5px; border: 1px solid #444; border-radius: 4px;
+      background: var(--surface2); font-size: 0.7rem; font-family: inherit; color: var(--muted);
+      line-height: 1.4;
+    }
     #voter-label { font-size: 0.82rem; color: var(--dim); }
     #voter-label span { color: var(--text); font-weight: 600; }
     #voter-label a { color: var(--dim); font-size: 0.78rem; margin-left: 0.5rem; cursor: pointer; text-decoration: underline; }
@@ -106,6 +112,13 @@
       justify-content: flex-start; padding-top: 2.5rem; gap: 1rem;
     }
     .vs-divider { font-size: 1.2rem; font-weight: 800; color: var(--dim); }
+    .arrow-btn {
+      background: var(--surface2); border: 1px solid var(--border); border-radius: 50%;
+      color: #f8fafc; font-size: 1.1rem; width: 2.4rem; height: 2.4rem;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer; transition: background 0.15s, border-color 0.15s; flex-shrink: 0;
+    }
+    .arrow-btn:hover { background: var(--green); border-color: var(--green); color: #000; }
     .skip-btn {
       background: none; border: none; color: var(--dim); font-size: 0.7rem;
       cursor: pointer; text-decoration: underline; white-space: nowrap;
@@ -116,12 +129,22 @@
     /* Listing card */
     .listing-card {
       background: var(--surface); border: 2px solid var(--border); border-radius: 12px;
-      overflow: hidden; cursor: pointer; transition: border-color 0.2s, box-shadow 0.2s; position: relative;
+      overflow: hidden; transition: border-color 0.2s, box-shadow 0.2s; position: relative;
     }
     .listing-card:hover { border-color: #444444; box-shadow: 0 6px 28px rgba(255,255,255,0.04); }
     .listing-card.winner { border-color: var(--green); animation: pulse-green 0.4s ease; }
     .listing-card.loser  { border-color: var(--red); opacity: 0.5; }
     .listing-card.voted  { pointer-events: none; }
+
+    .choose-btn {
+      display: block; width: 100%; padding: 0.85rem 1rem;
+      background: #ffffff; border: none; border-top: 1px solid var(--border);
+      color: #0a0a0a; font-size: 1rem; font-weight: 700; letter-spacing: 0.02em;
+      cursor: pointer; transition: background 0.15s, color 0.15s;
+    }
+    .choose-btn:hover { background: var(--green); color: #000; }
+    .listing-card.winner .choose-btn { background: var(--green); color: #000; }
+    .listing-card.loser  .choose-btn { background: transparent; }
     @keyframes pulse-green {
       0%   { box-shadow: 0 0 0 0 rgba(34,197,94,0.5); }
       70%  { box-shadow: 0 0 0 14px rgba(34,197,94,0); }
@@ -150,6 +173,10 @@
     .badge-heated-pool { background: #7c2d12; color: #fdba74; border: 1px solid #c2410c; }
     .badge-bbq         { background: #3b1d0a; color: #fb923c; border: 1px solid #92400e; }
     .badge-all-inc     { background: #166534; color: #86efac; border: 1px solid #15803d; }
+    .badge-game        { background: #1e1b4b; color: #a5b4fc; border: 1px solid #3730a3; }
+    .badge-wellness    { background: #4a044e; color: #f0abfc; border: 1px solid #86198f; }
+    .badge-sport       { background: #052e16; color: #86efac; border: 1px solid #166534; }
+    .badge-nature      { background: #0c4a6e; color: #7dd3fc; border: 1px solid #0369a1; }
 
     .rating-block { text-align: center; min-width: 60px; flex-shrink: 0; }
     .rating-value { font-size: 1.8rem; font-weight: 800; color: #f8fafc; line-height: 1; }
@@ -182,6 +209,7 @@
     .price-unit { color: var(--muted); font-size: 0.85rem; }
     .price-per-person { font-size: 0.75rem; color: var(--dim); margin-left: 0.25rem; }
     .summary-text { font-size: 0.82rem; color: #cbd5e1; font-style: italic; }
+    .description-text { font-size: 0.82rem; color: #94a3b8; white-space: pre-wrap; margin: 0; }
 
     /* Collapsible sections */
     .section { border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
@@ -195,6 +223,7 @@
     .section-toggle.open .chevron { transform: rotate(90deg); }
     .section-body { display: none; }
     .section-body.open { display: block; }
+    .section-body.padded { padding: 0.75rem; }
 
     /* Score breakdown */
     .score-groups { display: flex; gap: 0.75rem; padding: 0.75rem; flex-wrap: wrap; }
@@ -230,11 +259,11 @@
     .owner-reply  { margin-top: 0.4rem; font-size: 0.73rem; color: #aaaaaa; padding-left: 0.75rem; border-left: 2px solid #333333; }
 
     .view-listing {
-      display: inline-block; padding: 0.45rem 1rem; background: #ffffff; color: #0a0a0a;
-      border-radius: 7px; text-decoration: none; font-size: 0.8rem; font-weight: 600;
-      align-self: flex-start; transition: background 0.2s;
+      display: inline-block; padding: 0.45rem 1rem; background: transparent; color: var(--muted);
+      border: 1px solid var(--border); border-radius: 7px; text-decoration: none; font-size: 0.8rem; font-weight: 600;
+      align-self: flex-start; transition: background 0.2s, color 0.2s;
     }
-    .view-listing:hover { background: #2a2a2a; }
+    .view-listing:hover { background: #2a2a2a; color: #f8fafc; }
 
     /* Leaderboard */
     #view-leaderboard { max-width: 1100px; margin: 0 auto; padding: 2rem 1rem; }
@@ -348,6 +377,7 @@
       <div id="voter-label">
         Voting as <span id="voter-display"></span>
         <a onclick="changeName()">(change)</a>
+        <span class="key-hint">· use <kbd>←</kbd> <kbd>→</kbd> to vote</span>
       </div>
     </div>
     <div id="vote-loading"><div class="spinner"></div></div>
@@ -357,8 +387,10 @@
         <div class="matchup" id="matchup">
           <div id="card-a"></div>
           <div class="vs-col">
+            <button class="arrow-btn arrow-btn-left" onclick="vote('a')" title="Choose left (←)">←</button>
             <div class="vs-divider">VS</div>
             <button class="skip-btn" onclick="loadMatchup()">skip pair</button>
+            <button class="arrow-btn arrow-btn-right" onclick="vote('b')" title="Choose right (→)">→</button>
           </div>
           <div id="card-b"></div>
         </div>
@@ -517,7 +549,7 @@ function buildCard(entry, side) {
   const starsFilled = Math.round(l.aggregateRating.value);
 
   return `
-  <article class="listing-card" id="lcard-${side}" onclick="vote('${side}')">
+  <article class="listing-card" id="lcard-${side}">
     <div class="card-header">
       <div class="card-title-block">
         <div class="card-title" title="${esc(l.title)}">${esc(l.title)}</div>
@@ -629,10 +661,20 @@ function buildCard(entry, side) {
             </div>`).join('')}
           </div>
         </div>` : ''}
+        ${l.description ? `
+        <div class="section">
+          <button class="section-toggle" onclick="toggleSection(event,this)">
+            <span class="chevron">▶</span> Full description
+          </button>
+          <div class="section-body padded">
+            <p class="description-text">${esc(l.description)}</p>
+          </div>
+        </div>` : ''}
         <a class="view-listing" href="${esc(l.url)}" target="_blank" rel="noopener"
            onclick="event.stopPropagation()">View on Gîtes de France →</a>
       </div>
     </div>
+    <button class="choose-btn" onclick="vote('${side}')">Choose this one</button>
   </article>`;
 }
 
@@ -650,20 +692,87 @@ function scoreRow(label, c) {
 }
 
 function buildBadges(l) {
-  const lower = (l.equipment ? l.equipment.outdoor : l.outdoor || []).map(a => a.toLowerCase());
+  const outdoor = (l.equipment ? l.equipment.outdoor : l.outdoor || []).map(a => a.toLowerCase());
+  const indoor  = (l.equipment ? l.equipment.indoor  : l.indoor  || []).map(a => a.toLowerCase());
+  const services= (l.equipment ? l.equipment.services: l.services|| []).map(a => a.toLowerCase());
+  const desc    = ((l.description || '') + ' ' + (l.summary || '')).toLowerCase();
+
+  // Helper: match against all equipment lists + description text
+  const inAny = (...terms) => terms.some(t =>
+    outdoor.some(a => a.includes(t)) ||
+    indoor.some(a  => a.includes(t)) ||
+    services.some(a=> a.includes(t)) ||
+    desc.includes(t)
+  );
+
   let out = '';
-  if (lower.some(a => a.includes('heated') && a.includes('pool')))
+
+  // ── Pool ──────────────────────────────────────────────────────────────────
+  if (outdoor.some(a => a.includes('heated') && a.includes('pool')) || desc.includes('heated pool') || desc.includes('heated swimming pool'))
     out += '<span class="badge badge-heated-pool">♨ Heated Pool</span>';
-  else if (lower.some(a => a.includes('covered') && a.includes('pool')))
+  else if (outdoor.some(a => a.includes('covered') && a.includes('pool')))
     out += '<span class="badge badge-pool">Covered Pool</span>';
-  else if (lower.some(a => a.includes('private') && a.includes('pool')))
+  else if (outdoor.some(a => a.includes('private') && a.includes('pool')) || outdoor.some(a => a.includes('privatepool')))
     out += '<span class="badge badge-pool">Private Pool</span>';
-  else if (lower.some(a => a.includes('pool')))
+  else if (inAny('pool'))
     out += '<span class="badge badge-pool">Pool</span>';
-  if (lower.some(a => a.includes('barbecue') || a.includes('bbq')))
+
+  // ── BBQ ───────────────────────────────────────────────────────────────────
+  if (inAny('barbecue', 'bbq'))
     out += '<span class="badge badge-bbq">BBQ</span>';
+
+  // ── All Inclusive ─────────────────────────────────────────────────────────
   if (l.allInclusive)
     out += '<span class="badge badge-all-inc">All Inclusive</span>';
+
+  // ── Game room entertainment ───────────────────────────────────────────────
+  if (inAny('billiard', 'billard', 'snooker', 'pool table'))
+    out += '<span class="badge badge-game">🎱 Billiards</span>';
+  if (inAny('ping-pong', 'ping pong', 'pingpong', 'table tennis', 'tennis de table'))
+    out += '<span class="badge badge-game">🏓 Ping-Pong</span>';
+  if (inAny('table soccer', 'table football', 'foosball', 'babyfoot', 'baby-foot', 'baby foot', 'kicker'))
+    out += '<span class="badge badge-game">⚽ Table Soccer</span>';
+  if (inAny('dart'))
+    out += '<span class="badge badge-game">🎯 Darts</span>';
+  if (inAny('pinball', 'flipper'))
+    out += '<span class="badge badge-game">🕹 Pinball</span>';
+  if (inAny('arcade'))
+    out += '<span class="badge badge-game">🕹 Arcade</span>';
+  if (inAny('game room', 'salle de jeux', 'room of games'))
+    out += '<span class="badge badge-game">🎮 Game Room</span>';
+
+  // ── Wellness ──────────────────────────────────────────────────────────────
+  if (inAny('sauna'))
+    out += '<span class="badge badge-wellness">🧖 Sauna</span>';
+  if (inAny('hammam'))
+    out += '<span class="badge badge-wellness">💨 Hammam</span>';
+  if (inAny('jacuzzi', 'hot tub', 'spa'))
+    out += '<span class="badge badge-wellness">🛁 Jacuzzi/Spa</span>';
+  if (inAny('nordic bath'))
+    out += '<span class="badge badge-wellness">❄ Nordic Bath</span>';
+
+  // ── Outdoor activities ────────────────────────────────────────────────────
+  if (inAny('pétanque', 'petanque', 'boules'))
+    out += '<span class="badge badge-sport">🎳 Jeu de Boules</span>';
+  if (inAny('trampoline'))
+    out += '<span class="badge badge-sport">🤸 Trampoline</span>';
+  if (inAny('badminton'))
+    out += '<span class="badge badge-sport">🏸 Badminton</span>';
+  if (inAny('tennis court'))
+    out += '<span class="badge badge-sport">🎾 Tennis Court</span>';
+  if (inAny('basketball'))
+    out += '<span class="badge badge-sport">🏀 Basketball</span>';
+
+  // ── Nature / extras ───────────────────────────────────────────────────────
+  if (inAny('fire place', 'fireplace', 'wood burning stove', 'open fire'))
+    out += '<span class="badge badge-nature">🔥 Fireplace</span>';
+  if (inAny('wine cellar', 'cave à vin'))
+    out += '<span class="badge badge-nature">🍷 Wine Cellar</span>';
+  if (inAny('canoe', 'kayak', 'paddle'))
+    out += '<span class="badge badge-nature">🛶 Canoe/Kayak</span>';
+  if (inAny('home cinema', 'cinema room', 'home theater', 'home theatre'))
+    out += '<span class="badge badge-game">🎥 Home Cinema</span>';
+
   return out;
 }
 
@@ -704,10 +813,16 @@ function lbClickOutside(e) { if (e.target === document.getElementById('lightbox'
 function closeLb() { document.getElementById('lightbox').classList.remove('open'); }
 
 document.addEventListener('keydown', e => {
-  if (!document.getElementById('lightbox').classList.contains('open')) return;
-  if (e.key === 'Escape') closeLb();
-  if (e.key === 'ArrowLeft')  { _lbIndex = (_lbIndex-1+_lbPhotos.length)%_lbPhotos.length; renderLb(); }
-  if (e.key === 'ArrowRight') { _lbIndex = (_lbIndex+1)%_lbPhotos.length; renderLb(); }
+  if (document.getElementById('lightbox').classList.contains('open')) {
+    if (e.key === 'Escape') closeLb();
+    if (e.key === 'ArrowLeft')  { _lbIndex = (_lbIndex-1+_lbPhotos.length)%_lbPhotos.length; renderLb(); }
+    if (e.key === 'ArrowRight') { _lbIndex = (_lbIndex+1)%_lbPhotos.length; renderLb(); }
+    return;
+  }
+  if (currentMatchup) {
+    if (e.key === 'ArrowLeft')  vote('a');
+    if (e.key === 'ArrowRight') vote('b');
+  }
 });
 
 function toggleSection(e, btn) {
