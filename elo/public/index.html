@@ -700,29 +700,41 @@ function buildBadges(l) {
   const indoor  = (l.equipment ? l.equipment.indoor  : l.indoor  || []).map(a => a.toLowerCase());
   const services= (l.equipment ? l.equipment.services: l.services|| []).map(a => a.toLowerCase());
   const desc    = ((l.description || '') + ' ' + (l.summary || '')).toLowerCase();
+  const allText = outdoor.concat(indoor, services, [desc]);
 
-  // Helper: match against all equipment lists + description text
-  const inAny = (...terms) => terms.some(t =>
+  // Exact substring match against all equipment lists + description text
+  const hasStr = (...terms) => terms.some(t =>
     outdoor.some(a => a.includes(t)) ||
     indoor.some(a  => a.includes(t)) ||
     services.some(a=> a.includes(t)) ||
     desc.includes(t)
   );
 
+  // Whole-word regex match against all text (equipment items + description)
+  const hasWord = (...words) => words.some(w => {
+    const re = new RegExp('\\b' + w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\b', 'i');
+    return allText.some(s => re.test(s));
+  });
+
+  // Pool detection: exclude "pool table" hits when checking for swimming pool
+  const hasPoolEquip = outdoor.some(a => /\bpool\b/.test(a));
+  const hasPoolDesc  = /\bpool\b/.test(desc) && !/\bpool table\b/.test(desc);
+  const hasPool      = hasPoolEquip || hasPoolDesc;
+
   let out = '';
 
   // ── Pool ──────────────────────────────────────────────────────────────────
-  if (outdoor.some(a => a.includes('heated') && a.includes('pool')) || desc.includes('heated pool') || desc.includes('heated swimming pool'))
+  if (outdoor.some(a => /\bheated\b/.test(a) && /\bpool\b/.test(a)) || /\bheated (swimming )?pool\b/.test(desc))
     out += '<span class="badge badge-heated-pool">♨ Heated Pool</span>';
-  else if (outdoor.some(a => a.includes('covered') && a.includes('pool')))
+  else if (outdoor.some(a => /\bcovered\b/.test(a) && /\bpool\b/.test(a)))
     out += '<span class="badge badge-pool">Covered Pool</span>';
-  else if (outdoor.some(a => a.includes('private') && a.includes('pool')) || outdoor.some(a => a.includes('privatepool')))
+  else if (outdoor.some(a => /\bprivate\b/.test(a) && /\bpool\b/.test(a)) || outdoor.some(a => a.includes('privatepool')))
     out += '<span class="badge badge-pool">Private Pool</span>';
-  else if (inAny('pool'))
+  else if (hasPool)
     out += '<span class="badge badge-pool">Pool</span>';
 
   // ── BBQ ───────────────────────────────────────────────────────────────────
-  if (inAny('barbecue', 'bbq'))
+  if (hasWord('barbecue', 'bbq'))
     out += '<span class="badge badge-bbq">BBQ</span>';
 
   // ── All Inclusive ─────────────────────────────────────────────────────────
@@ -730,51 +742,57 @@ function buildBadges(l) {
     out += '<span class="badge badge-all-inc">All Inclusive</span>';
 
   // ── Game room entertainment ───────────────────────────────────────────────
-  if (inAny('billiard', 'billard', 'snooker', 'pool table'))
+  // billiards: use word boundary; also match "pool table" as exact phrase
+  if (hasWord('billiard', 'billiards', 'billard', 'billards', 'snooker') || hasStr('pool table'))
     out += '<span class="badge badge-game">🎱 Billiards</span>';
-  if (inAny('ping-pong', 'ping pong', 'pingpong', 'table tennis', 'tennis de table'))
+  if (hasStr('ping-pong', 'ping pong', 'pingpong', 'table tennis', 'tennis de table'))
     out += '<span class="badge badge-game">🏓 Ping-Pong</span>';
-  if (inAny('table soccer', 'table football', 'foosball', 'babyfoot', 'baby-foot', 'baby foot', 'kicker'))
+  if (hasStr('table soccer', 'table football', 'foosball', 'babyfoot', 'baby-foot', 'baby foot') || hasWord('kicker'))
     out += '<span class="badge badge-game">⚽ Table Soccer</span>';
-  if (inAny('dart'))
+  // "dart" with word boundary to avoid matching "moutarde", "standard", etc.
+  if (hasWord('dart', 'darts', 'dartboard'))
     out += '<span class="badge badge-game">🎯 Darts</span>';
-  if (inAny('pinball', 'flipper'))
+  if (hasWord('pinball', 'flipper'))
     out += '<span class="badge badge-game">🕹 Pinball</span>';
-  if (inAny('arcade'))
+  if (hasWord('arcade'))
     out += '<span class="badge badge-game">🕹 Arcade</span>';
-  if (inAny('game room', 'salle de jeux', 'room of games'))
+  if (hasStr('game room', 'salle de jeux', 'room of games'))
     out += '<span class="badge badge-game">🎮 Game Room</span>';
 
   // ── Wellness ──────────────────────────────────────────────────────────────
-  if (inAny('sauna'))
+  if (hasWord('sauna'))
     out += '<span class="badge badge-wellness">🧖 Sauna</span>';
-  if (inAny('hammam'))
+  if (hasWord('hammam'))
     out += '<span class="badge badge-wellness">💨 Hammam</span>';
-  if (inAny('jacuzzi', 'hot tub', 'spa'))
+  // "spa" with word boundary to avoid matching "spacious", "hispanique", etc.
+  if (hasWord('jacuzzi', 'spa') || hasStr('hot tub'))
     out += '<span class="badge badge-wellness">🛁 Jacuzzi/Spa</span>';
-  if (inAny('nordic bath'))
+  if (hasStr('nordic bath'))
     out += '<span class="badge badge-wellness">❄ Nordic Bath</span>';
 
   // ── Outdoor activities ────────────────────────────────────────────────────
-  if (inAny('pétanque', 'petanque', 'boules'))
+  // "boules" with word boundary to avoid matching "boulesversement" etc.
+  if (hasWord('pétanque', 'petanque', 'boules'))
     out += '<span class="badge badge-sport">🎳 Jeu de Boules</span>';
-  if (inAny('trampoline'))
+  if (hasWord('trampoline'))
     out += '<span class="badge badge-sport">🤸 Trampoline</span>';
-  if (inAny('badminton'))
+  if (hasWord('badminton'))
     out += '<span class="badge badge-sport">🏸 Badminton</span>';
-  if (inAny('tennis court'))
+  if (hasStr('tennis court'))
     out += '<span class="badge badge-sport">🎾 Tennis Court</span>';
-  if (inAny('basketball'))
+  if (hasWord('basketball'))
     out += '<span class="badge badge-sport">🏀 Basketball</span>';
 
   // ── Nature / extras ───────────────────────────────────────────────────────
-  if (inAny('fire place', 'fireplace', 'wood burning stove', 'open fire'))
+  if (hasStr('fire place', 'fireplace', 'wood burning stove', 'open fire'))
     out += '<span class="badge badge-nature">🔥 Fireplace</span>';
-  if (inAny('wine cellar', 'cave à vin'))
+  if (hasStr('wine cellar', 'cave à vin'))
     out += '<span class="badge badge-nature">🍷 Wine Cellar</span>';
-  if (inAny('canoe', 'kayak', 'paddle'))
+  // "paddle" with word boundary to avoid matching "paddleboat" mismatches;
+  // "canoe"/"kayak" are distinctive enough but get word boundaries too
+  if (hasWord('canoe', 'kayak', 'paddle'))
     out += '<span class="badge badge-nature">🛶 Canoe/Kayak</span>';
-  if (inAny('home cinema', 'cinema room', 'home theater', 'home theatre'))
+  if (hasStr('home cinema', 'cinema room', 'home theater', 'home theatre'))
     out += '<span class="badge badge-game">🎥 Home Cinema</span>';
 
   return out;
