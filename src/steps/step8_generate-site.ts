@@ -72,7 +72,6 @@ function starDisplay(value: number, count: number): string {
 function photoGallery(photos: string[], ref: string, lat?: number, lon?: number): string {
   if (photos.length === 0 && lat == null) return "";
   const thumbs = photos
-    .slice(0, 8)
     .map(
       (url, i) =>
         `<img class="thumb${i === 0 ? " thumb-active" : ""}" src="${esc(url)}" alt="photo ${i + 1}" loading="lazy" onclick="selectPhoto(this,'${esc(url)}')">`
@@ -83,12 +82,12 @@ function photoGallery(photos: string[], ref: string, lat?: number, lon?: number)
       ? `<div class="map" id="map-${esc(ref)}" data-lat="${lat}" data-lon="${lon}"></div>`
       : "";
   const photoJsonAttr = photos.length > 0
-    ? ` data-photos="${esc(JSON.stringify(photos.slice(0, 8)))}"`
+    ? ` data-photos="${esc(JSON.stringify(photos))}"`
     : "";
   return `
     <div class="gallery">
       ${photos.length > 0 ? `<img class="main-photo" src="${esc(photos[0])}" alt="main photo"${photoJsonAttr} onclick="openLightbox(this)">` : ""}
-      ${photos.length > 0 ? `<div class="thumbs">${thumbs}</div>` : ""}
+      ${photos.length > 0 ? `<div class="thumbs-wrap"><div class="thumbs">${thumbs}</div></div>` : ""}
       ${mapDiv}
       ${lat != null && lon != null ? `<a class="gmaps-link" href="https://www.google.com/maps?q=${lat},${lon}" target="_blank" rel="noopener">Open in Google Maps &rarr;</a>` : ""}
     </div>`;
@@ -305,10 +304,15 @@ function generateHtml(listings: EnrichedListing[]): string {
 
     /* Card body */
     .card-body { display: flex; gap: 0; flex-wrap: wrap; }
-    .gallery { flex: 0 0 340px; display: flex; flex-direction: column; gap: 6px; padding: 1rem; background: #0f172a; }
+    .gallery { flex: 0 0 340px; min-width: 0; overflow: hidden; display: flex; flex-direction: column; gap: 6px; padding: 1rem; background: #0f172a; }
     .main-photo { width: 100%; height: 220px; object-fit: cover; border-radius: 8px; cursor: zoom-in; }
-    .thumbs { display: flex; gap: 4px; flex-wrap: wrap; }
-    .thumb { width: 58px; height: 42px; object-fit: cover; border-radius: 4px; cursor: pointer; opacity: 0.6; transition: opacity 0.2s; border: 2px solid transparent; }
+    .thumbs-wrap { position: relative; }
+    .thumbs-wrap::after { content: ''; pointer-events: none; position: absolute; bottom: 0; left: 0; right: 0; height: 32px; background: linear-gradient(to bottom, transparent, #0f172a); border-radius: 0 0 4px 4px; }
+    .thumbs { display: grid; grid-template-columns: repeat(5, 58px); gap: 4px; max-height: 134px; overflow-y: auto; overflow-x: hidden; scrollbar-width: thin; scrollbar-color: #475569 transparent; padding-bottom: 2px; }
+    .thumbs::-webkit-scrollbar { width: 4px; }
+    .thumbs::-webkit-scrollbar-track { background: transparent; }
+    .thumbs::-webkit-scrollbar-thumb { background: #475569; border-radius: 2px; }
+    .thumb { width: 58px; height: 42px; object-fit: cover; border-radius: 4px; cursor: pointer; opacity: 0.6; transition: opacity 0.2s; border: 2px solid transparent; display: block; }
     .thumb:hover, .thumb-active { opacity: 1; border-color: #38bdf8; }
     .map { width: 100%; height: 180px; border-radius: 8px; overflow: hidden; margin-top: 2px; z-index: 0; }
     .gmaps-link { display: block; text-align: center; font-size: 0.75rem; color: #64748b; text-decoration: none; padding: 4px 0; }
@@ -542,7 +546,7 @@ ${cards}
 
 const generateSite = createStep<EnrichedListing[], null>(
   "generate-site",
-  "9",
+  "13",
   async (listings) => {
     const html = generateHtml(listings);
     await Bun.write("data/site/index.html", html);
