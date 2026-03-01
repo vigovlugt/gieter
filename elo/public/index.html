@@ -349,9 +349,10 @@
 
     @media (max-width: 700px) {
       .matchup { grid-template-columns: 1fr; }
-      .vs-col { flex-direction: row; padding-top: 0; padding: 0.5rem 0; justify-content: center; }
+      .vs-col { flex-direction: row; padding-top: 0; padding: 0.5rem 0; justify-content: center; position: static; transform: none; }
       .skip-btn { writing-mode: horizontal-tb; transform: none; }
       .main-photo { height: 300px; }
+      .thumbs-wrap { max-width: calc(100vw - 3rem); }
     }
   </style>
 </head>
@@ -892,7 +893,7 @@ function renderLeaderboard(data) {
       <td class="lb-title">
         <a href="${esc(l.url)}" target="_blank" rel="noopener">${esc(l.title)}</a>
         <div class="lb-sub">${esc(l.location.city)}, ${esc(l.location.department)}</div>
-        <div style="margin-top:3px">${buildBadges(l)}</div>
+        <div class="badge-row" style="margin-top:3px">${buildBadges(l)}</div>
       </td>
       <td><div class="elo-val">${Math.round(entry.elo)} <span class="elo-ci">±${Math.round(400/Math.sqrt(entry.matches+1))}</span></div></td>
       <td class="wl"><span class="w">${entry.wins}W</span> / <span class="l">${entry.losses}L</span></td>
