@@ -48,7 +48,7 @@ const RAW_LISTINGS = (resultsJson as any[]).slice(0, 50).map((l: any) => ({
   },
   price: l.price as { amount: number; currency: string; per: string },
   allInclusive: l.allInclusive as boolean,
-  photos: (l.photos as string[]).slice(0, 8),
+  photos: l.photos as string[],
   equipment: l.equipment as {
     indoor: string[];
     outdoor: string[];
