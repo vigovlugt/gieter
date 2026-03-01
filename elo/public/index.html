@@ -83,8 +83,6 @@
     #name-confirm:hover { background: #2a2a2a; }
 
     /* Vote view */
-    #vote-header { text-align: center; padding: 1.25rem 1rem 1rem; }
-    #vote-header h2 { font-size: 1rem; color: var(--muted); margin-bottom: 0.25rem; }
     .key-hint { color: var(--dim); font-size: 0.75rem; }
     kbd {
       display: inline-block; padding: 1px 5px; border: 1px solid #444; border-radius: 4px;
@@ -105,11 +103,13 @@
     #vote-error { text-align: center; padding: 2rem; color: var(--red); display: none; }
 
     /* Matchup layout */
-    .matchup-outer { padding: 0 0.75rem 1.5rem; }
+    .matchup-outer { padding: 0.75rem; }
     .matchup { display: grid; grid-template-columns: 1fr 44px 1fr; align-items: start; }
     .vs-col {
       display: flex; flex-direction: column; align-items: center;
       justify-content: flex-start; padding-top: 2.5rem; gap: 1rem;
+      position: sticky; top: 50vh; transform: translateY(-50%);
+      align-self: start;
     }
     .vs-divider { font-size: 1.2rem; font-weight: 800; color: var(--dim); }
     .arrow-btn {
@@ -355,6 +355,11 @@
 <header>
   <h1>Gieter — ELO Ranking</h1>
   <div class="header-meta" id="header-meta">Loading…</div>
+  <div id="voter-label" style="display:none">
+    Voting as <span id="voter-display"></span>
+    <a onclick="changeName()">(change)</a>
+    <span class="key-hint">· <kbd>←</kbd> <kbd>→</kbd> to vote</span>
+  </div>
   <nav class="tabs">
     <button class="tab-btn active" onclick="switchTab('vote', this)">Vote</button>
     <button class="tab-btn" onclick="switchTab('leaderboard', this)">Leaderboard</button>
@@ -372,14 +377,6 @@
   </div>
 
   <div id="voting-ui" style="display:none">
-    <div id="vote-header">
-      <h2>Which house would you rather stay at?</h2>
-      <div id="voter-label">
-        Voting as <span id="voter-display"></span>
-        <a onclick="changeName()">(change)</a>
-        <span class="key-hint">· use <kbd>←</kbd> <kbd>→</kbd> to vote</span>
-      </div>
-    </div>
     <div id="vote-loading"><div class="spinner"></div></div>
     <div id="vote-error"></div>
     <div id="matchup-wrap">
@@ -491,6 +488,7 @@ function showVoting() {
   document.getElementById('name-gate').style.display = 'none';
   document.getElementById('voting-ui').style.display = 'block';
   document.getElementById('voter-display').textContent = voterName;
+  document.getElementById('voter-label').style.display = '';
   loadMatchup();
   loadHeaderMeta();
 }
